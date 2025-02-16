@@ -1,0 +1,16 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "npm.packageManager": "pnpm",
+  // 控制相关文件嵌套展示
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "*.ts": "$(capture).test.ts, $(capture).test.tsx",
+    "*.tsx": "$(capture).test.ts, $(capture).test.tsx",
+    "*.env": "$(capture).env.*",
+    "tsconfig.json": "tsconfig.*",
+    "package.json": "package-lock.json,pnpm-lock.yaml,pnpm-workspace.yaml",
+    ".eslintrc.json": ".prettierrc"
+  },
+  "terminal.integrated.scrollback": 10000
+}

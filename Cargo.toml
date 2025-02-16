@@ -1,0 +1,20 @@
+[package]
+name = "wego-devops"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.95"
+axum = { version = "0.8.1", features = ["multipart", "ws", "http2"] }
+chrono = "0.4.39"
+dirs = "6.0.0"
+dotenvy = "0.15.7"
+futures-util = "0.3.31"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.138"
+serde_yaml = "0.9.34"
+tokio = { version = "1.43.0", features = ["full"] }
+tower = { version = "0.5.2", features = ["full"] }
+tower-http = { version = "0.6.1", features = ["full"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }

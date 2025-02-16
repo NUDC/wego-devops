@@ -1,0 +1,13 @@
+
+# 开发配置
+[profile.dev]
+opt-level = 1
+overflow-checks = false
+
+# 打包配置
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

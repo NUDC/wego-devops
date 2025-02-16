@@ -1,0 +1,10 @@
+/target
+Cargo.lock
+
+#web
+/web/node_modules
+/web/dist
+/web/types/auto-imports.d.ts
+/web/types/components.d.ts
+package-lock.json
+pnpm-lock.yaml
