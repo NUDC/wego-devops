@@ -22,6 +22,9 @@ export interface ProjectInfo {
 export interface ProjectDto {
   name: string;
 }
+export interface ProjectLog {
+  path: string;
+}
 
 export function getProjects() {
   return request.postJson<any, ApiResult<ProjectIndex[]>>('/getprojects', {});
@@ -40,4 +43,11 @@ export function setProjectInfo(data: ProjectInfo) {
 
 export function run(name: string) {
   return request.postJson<ProjectDto, ApiResult<string>>('/run', { name });
+}
+
+export function getLogs(name: string) {
+  return request.post<ProjectDto, ApiResult<string[]>>('/getlogs', { name });
+}
+export function getLog(path: string) {
+  return request.post<ProjectLog, ApiResult<string>>('/getlog', { path });
 }

@@ -6,7 +6,7 @@
     </a-layout-header>
     <a-layout-content style="padding: 0 50px">
       <Breadcrumb style="margin: 16px 0" />
-      <div :style="{ background: '#fff', padding: '24px', minHeight: '500px' }">
+      <div :style="{ background: '#fff', padding: '24px', minHeight: '100vh' }">
         <router-view />
       </div>
     </a-layout-content>

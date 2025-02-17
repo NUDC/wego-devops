@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use tokio::fs;
-
 use chrono::NaiveDateTime as DateTime;
 use serde::{Deserialize, Serialize};
+use serde_repr::*;
+use tokio::fs;
 
 use crate::serializer::*;
 
@@ -16,11 +16,25 @@ mod store;
 pub struct ProjectIndex {
     pub name: String,
     pub remark: String,
-    pub status: i32,
+    pub status: ProjectStatus,
     #[serde(with = "datetime_option_format")]
     pub build_time: Option<DateTime>,
     #[serde(with = "datetime_format")]
     pub created: DateTime,
+}
+
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug, Clone)]
+#[repr(u8)]
+pub enum ProjectStatus {
+    Default = 0,
+    Success = 1,
+    Error = 2,
+    Running = 3,
+}
+impl Default for ProjectStatus {
+    fn default() -> Self {
+        Self::Default
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]

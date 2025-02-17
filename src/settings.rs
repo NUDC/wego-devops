@@ -23,3 +23,11 @@ pub fn get_shell_env() -> String {
 pub fn get_web_static() -> String {
     get_value("WEB")
 }
+
+pub fn get_shell_timeout() -> u64 {
+    let timeout = get_value("SHELL_TIMEOUT");
+    match timeout.parse::<u64>() {
+        Ok(num) => num,
+        Err(_) => 30,
+    }
+}

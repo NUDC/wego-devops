@@ -1,10 +1,12 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, time::Duration};
 
-use tokio::{fs, process::Command, task};
+use tokio::{fs, process::Command, task, time::timeout};
 
 use crate::settings;
 
-use super::{create_dir, get_projects_dir, store, ProjectConfig, ProjectIndex, ProjectInfo};
+use super::{
+    create_dir, get_projects_dir, store, ProjectConfig, ProjectIndex, ProjectInfo, ProjectStatus,
+};
 
 async fn get_yaml() -> anyhow::Result<PathBuf> {
     let dir = get_projects_dir().await?;
@@ -122,7 +124,7 @@ impl ProjectIndex {
         Ok(log_file)
     }
     /// 获取日志文件列表
-    async fn get_log_files(&self) -> anyhow::Result<Vec<PathBuf>> {
+    pub async fn get_log_files(&self) -> anyhow::Result<Vec<PathBuf>> {
         let log_dir = self.get_logs_dir().await?;
         let mut entries = fs::read_dir(log_dir).await?;
         let mut pathes = vec![];
@@ -174,29 +176,42 @@ impl ProjectIndex {
     async fn build(&self, log_file: &str) -> anyhow::Result<()> {
         let build_file = self.get_build_file().await?;
         let script_file = format!("{:?}", build_file);
-        run_shell(&script_file, log_file).await
+        let src = self.get_src_dir().await?;
+        let dir = format!("{:?}", src);
+        run_shell(&script_file, log_file, &dir).await
     }
     /// 执行部署脚本
     async fn deploy(&self, log_file: &str) -> anyhow::Result<()> {
         let deploy_file = self.get_deploy_file().await?;
         let script_file = format!("{:?}", deploy_file);
-        run_shell(&script_file, &log_file).await
+        let src = self.get_src_dir().await?;
+        let dir = format!("{:?}", src);
+        run_shell(&script_file, &log_file, &dir).await
     }
     /// 执行构建+部署脚本
-    pub async fn run(&self) -> anyhow::Result<String> {
+    async fn run_scripts(&self) -> anyhow::Result<String> {
         let log_file = self.create_log_file().await?;
+        self.build(&log_file).await?;
+        self.deploy(&log_file).await?;
+        Ok(log_file)
+    }
+    /// 执行构建+部署脚本
+    pub async fn run(&self) -> anyhow::Result<()> {
+        let mut project = self.clone();
+        project.build_time = Some(chrono::Local::now().naive_local());
+        project.status = ProjectStatus::Running;
+        add(project.clone()).await?;
 
-        // 将构建任务放到后台执行
-        let bg = self.clone();
-        let log = log_file.clone();
         task::spawn(async move {
-            if bg.build(&log).await.is_err() {
-                return;
+            project.status = match project.run_scripts().await {
+                Ok(_) => ProjectStatus::Success,
+                Err(_) => ProjectStatus::Error,
             };
-            _ = bg.deploy(&log).await;
+            // 修改为执行完成状态
+            _ = add(project.clone()).await;
         });
 
-        Ok(log_file)
+        Ok(())
     }
     /// 获取项目详情
     pub async fn get(&self) -> anyhow::Result<ProjectInfo> {
@@ -229,45 +244,19 @@ impl ProjectIndex {
     }
 }
 
-async fn run_shell(script_file: &str, log_file: &str) -> anyhow::Result<()> {
-    let mut cmd = Command::new(settings::get_shell_env());
-    let shell_command = format!("sh -xe {} >> {} 2>&1", script_file, log_file);
-    cmd.arg("--login")
-        .arg("-c")
-        .arg(&shell_command)
-        .status()
-        .await?;
+async fn run_shell(script_file: &str, log_file: &str, dir: &str) -> anyhow::Result<()> {
+    let shell_command = format!("cd {} && sh -xe {} >> {} 2>&1", dir, script_file, log_file);
+    tracing::info!("执行脚本：{}", shell_command);
 
-    Ok(())
-}
-
-#[tokio::test]
-async fn test_add_project() -> anyhow::Result<()> {
-    add(ProjectIndex {
-        name: "demo".to_string(),
-        remark: "测试项目".to_string(),
-        status: 1,
-        build_time: None,
-        created: chrono::Local::now().naive_local(),
+    timeout(Duration::from_secs(settings::get_shell_timeout()), async {
+        Command::new(settings::get_shell_env())
+            .arg("-c")
+            .arg(&shell_command)
+            .status()
+            .await
     })
-    .await
-}
+    .await??;
 
-#[tokio::test]
-async fn test_config_project() -> anyhow::Result<()> {
-    let list = get_all().await?;
-
-    let Some(index) = list.first() else {
-        return Ok(());
-    };
-
-    // index.set_build(r"echo build").await?;
-    // index.set_deploy(r"echo deploy").await?;
-    // index.run().await?;
-
-    let logs = index.get_log_files().await?;
-    for log in logs {
-        println!("{:?}", log);
-    }
+    tracing::info!("finished:{}", script_file);
     Ok(())
 }

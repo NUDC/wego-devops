@@ -1,9 +1,11 @@
 //! 项目管理接口
 
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
+use anyhow::Context;
 use axum::{routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
+use tokio::fs;
 
 use crate::{
     models,
@@ -18,6 +20,8 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/getprojectinfo", post(get_project_info))
         .route("/setprojectinfo", post(set_project_info))
         .route("/run", post(run))
+        .route("/getlogs", post(get_log_all))
+        .route("/getlog", post(get_log))
         .with_state(state)
 }
 
@@ -39,6 +43,11 @@ struct EditScript {
 #[serde(rename_all = "camelCase")]
 struct ProjectDto {
     pub name: String,
+}
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectLog {
+    pub path: String,
 }
 
 /// 获取所有项目
@@ -66,6 +75,7 @@ async fn set_project_info(Json(dto): Json<ProjectInfo>) -> models::Result<()> {
             let o = ProjectIndex {
                 name: dto.name.clone(),
                 remark: dto.remark.clone(),
+                created: chrono::Local::now().naive_local(),
                 ..Default::default()
             };
             repository::project::add(o.clone()).await?;
@@ -82,4 +92,26 @@ async fn run(Json(dto): Json<ProjectDto>) -> models::Result<()> {
     };
     project.run().await?;
     Ok(()).into()
+}
+
+/// 获取日志
+async fn get_log_all(Json(dto): Json<ProjectDto>) -> models::Result<Vec<PathBuf>> {
+    let Some(project) = repository::project::get_by_name(&dto.name).await? else {
+        return anyhow::anyhow!("not found").into();
+    };
+    let files = project.get_log_files().await?;
+    Ok(files).into()
+}
+
+/// 读取日志
+async fn get_log(Json(dto): Json<ProjectLog>) -> models::Result<String> {
+    let contents = fs::read(&dto.path)
+        .await
+        .with_context(|| format!("Failed to read file: {}", dto.path))?;
+
+    // 将字节数据转换为字符串
+    let text = String::from_utf8(contents)
+        .with_context(|| format!("Failed to convert file content to UTF-8: {}", dto.path))?;
+
+    Ok(text).into()
 }

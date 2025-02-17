@@ -1,13 +1,17 @@
 <template>
-  <ConfigProvider :locale="zhCN">
+  <a-config-provider
+    :locale="zhCN"
+    :theme="{
+      algorithm: theme.defaultAlgorithm,
+    }"
+  >
     <router-view />
-  </ConfigProvider>
+  </a-config-provider>
 </template>
 
 <script setup lang="ts">
-import { ConfigProvider } from 'ant-design-vue';
+import { theme } from 'ant-design-vue';
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
-
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';

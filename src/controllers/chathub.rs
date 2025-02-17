@@ -40,10 +40,13 @@ async fn websocket(state: Arc<AppState>, socket: ws::WebSocket) {
                     continue;
                 }
             };
-            let res = sender.send(ws::Message::Text(json.clone().into())).await;
-            match res {
+
+            match sender.send(ws::Message::Text(json.clone().into())).await {
                 Ok(_) => tracing::debug!("发送消息成功{:?}", json),
-                Err(err) => tracing::warn!("发送消息失败：{err}"),
+                Err(err) => {
+                    tracing::warn!("发送消息失败：{err}");
+                    break;
+                }
             }
         }
     });
