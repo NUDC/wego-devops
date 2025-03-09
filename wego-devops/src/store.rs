@@ -1,15 +1,11 @@
 //! 配置存储
 
-use std::{path::PathBuf, sync::LazyLock};
+use std::path::PathBuf;
 
+use anyhow::Ok;
 use tokio::{fs, io::AsyncWriteExt};
 
-use crate::settings;
-
-/// 本地存储地址
-pub const ROOT_PATH: LazyLock<PathBuf> =
-    LazyLock::new(|| PathBuf::new().join(settings::get_root_path()));
-
+/// 删除文件
 pub async fn del(path: &PathBuf) -> anyhow::Result<()> {
     fs::remove_file(&path).await?;
     Ok(())

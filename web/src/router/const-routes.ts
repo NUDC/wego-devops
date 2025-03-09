@@ -5,7 +5,13 @@ const leftMenus: RouteRecordRaw[] = [
     path: '/project/list',
     name: 'project_list',
     component: () => import('@/views/project/List.vue'),
-    meta: { title: '项目列表', icon: 'icon-facebook' },
+    meta: { title: '项目', icon: 'icon-facebook' },
+  },
+  {
+    path: '/server/list',
+    name: 'server_list',
+    component: () => import('@/views/server/List.vue'),
+    meta: { title: '服务器', icon: 'icon-facebook' },
   },
   {
     path: '/project/save/:id(\\d+)?',

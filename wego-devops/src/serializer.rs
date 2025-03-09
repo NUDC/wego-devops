@@ -22,6 +22,7 @@ pub mod datetime_format {
         Ok(DateTime::from(dt))
     }
 }
+
 pub mod datetime_option_format {
     use chrono::NaiveDateTime as DateTime;
     use serde::{self, Deserialize, Deserializer, Serializer};

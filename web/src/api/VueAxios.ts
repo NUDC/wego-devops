@@ -1,11 +1,14 @@
 import { notification } from 'ant-design-vue';
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 
+export interface ApiResult<T = any> {
+  code: number;
+  message: string;
+  data: T;
+}
+
 export interface VueAxiosInstance extends AxiosInstance {
-  getJson<TRequest, TResponse>(api: string, data: TRequest): Promise<TResponse>;
-  postJson<TRequest, TResponse>(api: string, data: TRequest): Promise<TResponse>;
-  deleteJson<TRequest, TResponse>(api: string, data: TRequest): Promise<TResponse>;
-  putJson<TRequest, TResponse>(api: string, data: TRequest): Promise<TResponse>;
+  postJson<TResponse = any>(api: string, data?: any): Promise<ApiResult<TResponse>>;
 }
 
 export class VueAxios {
@@ -21,29 +24,8 @@ export class VueAxios {
 
     this.request.interceptors.response.use(o => o.data, this.errorHandler);
 
-    this.request.getJson = <TRequest, TResponse>(api: string, data: TRequest) => {
-      return this.request.get<TRequest, TResponse>(api, { params: data });
-    };
-
-    this.request.postJson = <TRequest, TResponse>(api: string, data: TRequest) => {
-      return this.request.post<TRequest, TResponse>(api, JSON.stringify(data), {
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-        },
-      });
-    };
-
-    this.request.putJson = <TRequest, TResponse>(api: string, data: TRequest) => {
-      return this.request.put<TRequest, TResponse>(api, JSON.stringify(data), {
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-        },
-      });
-    };
-
-    this.request.deleteJson = <TRequest, TResponse>(api: string, data: TRequest) => {
-      return this.request.delete<TRequest, TResponse>(api, {
-        data: JSON.stringify(data),
+    this.request.postJson = <TResponse = any>(api: string, data?: any) => {
+      return this.request.post<any, ApiResult<TResponse>>(api, JSON.stringify(data), {
         headers: {
           'Content-Type': 'application/json;charset=UTF-8',
         },

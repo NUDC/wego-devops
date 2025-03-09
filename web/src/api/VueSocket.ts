@@ -1,6 +1,5 @@
 import type { App } from 'vue';
 import { EventEmitter } from 'events';
-import dayjs from 'dayjs';
 
 type Listener = (...args: any[]) => void;
 
@@ -16,6 +15,7 @@ interface DevOpsWebSocketOptions {
   reconnectionInterval?: number;
   maxListeners?: number;
 }
+
 class WebSocketEvent {
   #options: DevOpsWebSocketOptions = {
     url: 'ws://localhost:8080',
@@ -59,15 +59,15 @@ class WebSocketEvent {
     this.#emit.setMaxListeners(this.#options.maxListeners ?? 50);
   }
   #heartbeat() {
-    let startTime = dayjs();
+    let startTime = getTimestamp();
     setInterval(() => {
-      startTime = dayjs();
+      startTime = getTimestamp();
       this.emit('hearbeat', 'ping');
     }, 1000 * (this.#options.heartbeatInterval ?? 5));
 
     this.on('hearbeat', () => {
-      const seconds = dayjs().diff(startTime, 'seconds');
-      if ((this.#options.heartbeatTimeout ?? 5) < seconds) {
+      const seconds = getTimestamp() - startTime;
+      if ((this.#options.heartbeatTimeout ?? 5) < seconds && this.#ws.readyState > 1) {
         console.log('heartbeat timeout');
         this.#connection();
       }
@@ -118,12 +118,16 @@ class WebSocketEvent {
   }
 }
 
+function getTimestamp() {
+  return new Date().getTime();
+}
+
 export default function VueSocket(app: App): void {
   if (app.config.globalProperties.$webSocketEvent != null) {
     return;
   }
   const webSocketEvent = new WebSocketEvent({
-    url: `${import.meta.env.VITE_PROXY_WS_API}?id=${new Date().getTime()}`,
+    url: `${import.meta.env.VITE_PROXY_WS_API}?id=${getTimestamp()}`,
     heartbeatInterval: 5,
     reconnectionInterval: 5,
   });

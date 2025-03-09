@@ -2,13 +2,13 @@
 
 use axum::{routing::*, Router};
 
-use crate::models;
+use crate::Result;
 
 pub fn routes() -> Router {
-    Router::new().route("/health", get(check).post(check))
+    Router::new().route("/check", get(check).post(check))
 }
 
 /// 健康检查
-async fn check() -> models::Result<()> {
+async fn check() -> Result<()> {
     Ok(()).into()
 }
