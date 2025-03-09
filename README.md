@@ -79,5 +79,5 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub user@remote_host
 # 运行接口
  cargo r
 # 运行web界面
-cd /web && pnpm dev
+cd web && pnpm dev
 ```
