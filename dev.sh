@@ -1,5 +1,5 @@
-s=root@192.168.64.201
-# s=newbeebox@172.16.1.130
+# s=root@192.168.64.201
+s=root@172.16.1.144
 
 build() {
     cargo zigbuild -r --target x86_64-unknown-linux-musl -p wego-devops

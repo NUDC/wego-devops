@@ -91,6 +91,8 @@ pub async fn get_config(
 impl ProjectConfig {
     /// 保存配置
     pub async fn save(&self) -> anyhow::Result<()> {
+        get_src_dir(&self.name, self.group.clone())?; // 初始化文件夹
+
         let path = get_project_yaml(&self.name, self.group.clone())?;
         store::write(&path, self).await
     }
