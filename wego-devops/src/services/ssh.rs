@@ -27,7 +27,13 @@ pub async fn run_local_shell(
     dir: &str,
 ) -> anyhow::Result<()> {
     let shell_command = format!(
-        "cd {} && PS4='+[$(date \"+%Y-%m-%d %H:%M:%S\")]' sh -xe <<EOF 2>&1 | tee -a {}\n{}\nEOF",
+        r#"
+cd {}
+PS4='+[$(date "+%Y-%m-%d %H:%M:%S")]'
+bash -xe <<EOF 2>&1 | tee -a {}
+{}
+EOF
+"#,
         dir, log_file, script_content
     );
     run_shell(&shell_command).await?;

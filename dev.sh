@@ -7,7 +7,7 @@ build() {
 
 pub() {
     scp target/x86_64-unknown-linux-musl/release/wego-devops ${s}:/home/devops/
-    scp -r web/dist/* ${s}:/home/devops/wwwroot
+    # scp -r web/dist/* ${s}:/home/devops/wwwroot
 }
 
 test() {
@@ -24,7 +24,8 @@ test() {
 }
 
 test2() {
-    PS4='+[$(date "+%Y-%m-%d %H:%M:%S")] ' sh -xe <<EOF 2>&1 | tee -a logfile.log
+    PS4='+[$(date "+%Y-%m-%d %H:%M:%S")]'
+    bash -xe <<EOF 2>&1 | tee -a logfile.log
 pwd
 ls -l
 echo "Script completed"
