@@ -7,7 +7,7 @@ build() {
 
 pub() {
     scp target/x86_64-unknown-linux-musl/release/wego-devops ${s}:/home/devops/
-    # scp -r web/dist/* ${s}:/home/devops/wwwroot
+    scp -r web/dist/* ${s}:/home/devops/wwwroot
 }
 
 test() {

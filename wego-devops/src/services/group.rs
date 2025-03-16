@@ -13,7 +13,7 @@ use crate::{settings, store};
 #[derive(Deserialize, Serialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectIndex {
-    pub group: Option<String>,
+    pub group: String,
     pub name: String,
     pub remark: String,
     pub status: ProjectStatus,
@@ -24,21 +24,19 @@ pub struct ProjectIndex {
 }
 impl ProjectIndex {
     pub fn unique_id(&self) -> String {
-        let g = self.group.clone().unwrap_or("default".to_string());
-        format!("{}_{}", g, self.name)
+        format!("{}_{}", self.group, self.name)
     }
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectUniqueId {
-    pub group: Option<String>,
+    pub group: String,
     pub name: String,
 }
 impl ProjectUniqueId {
     pub fn unique_id(&self) -> String {
-        let g = self.group.clone().unwrap_or("default".to_string());
-        format!("{}_{}", g, self.name)
+        format!("{}_{}", self.group, self.name)
     }
 }
 

@@ -17,66 +17,66 @@ interface DevOpsWebSocketOptions {
 }
 
 class WebSocketEvent {
-  #options: DevOpsWebSocketOptions = {
+  options: DevOpsWebSocketOptions = {
     url: 'ws://localhost:8080',
     heartbeatInterval: 5,
     heartbeatTimeout: 5,
     reconnectionInterval: 5,
     maxListeners: 50,
   };
-  #ws!: WebSocket;
-  #emit!: EventEmitter;
+  ws!: WebSocket;
+  emits!: EventEmitter;
   constructor(options: DevOpsWebSocketOptions) {
-    this.#emit = new EventEmitter();
-    this.#options = Object.assign(this.#options, options);
-    this.#connection();
-    this.#Listener();
+    this.emits = new EventEmitter();
+    this.options = Object.assign(this.options, options);
+    this.connection();
+    this.listener();
   }
   on(eventName: string | symbol, listener: Listener) {
-    this.#emit.on(eventName, listener);
+    this.emits.on(eventName, listener);
   }
   once(eventName: string | symbol, listener: Listener) {
-    this.#emit.once(eventName, listener);
+    this.emits.once(eventName, listener);
   }
   off(eventName: string | symbol) {
-    this.#emit.removeAllListeners(eventName);
+    this.emits.removeAllListeners(eventName);
   }
   isExist(eventName: string | number) {
-    return this.#emit.eventNames().findIndex(o => o == eventName) > -1;
+    return this.emits.eventNames().findIndex(o => o == eventName) > -1;
   }
   emit(type: string, args: string) {
-    if (this.#ws.readyState != 1) {
-      console.log(`send error:websocket readystate=${this.#ws.readyState}`);
+    if (this.ws.readyState != 1) {
+      console.log(`send error:websocket readystate=${this.ws.readyState}`);
       return;
     }
     const msg: SocketMessage = {
       eventName: type,
       args: args,
     };
-    this.#ws.send(JSON.stringify(msg));
+    this.ws.send(JSON.stringify(msg));
   }
-  #maxListener() {
-    this.#emit.setMaxListeners(this.#options.maxListeners ?? 50);
+  maxListener() {
+    this.emits.setMaxListeners(this.options.maxListeners ?? 50);
   }
-  #heartbeat() {
+  heartbeat() {
     let startTime = getTimestamp();
     setInterval(() => {
       startTime = getTimestamp();
       this.emit('hearbeat', 'ping');
-    }, 1000 * (this.#options.heartbeatInterval ?? 5));
+    }, 1000 * (this.options.heartbeatInterval ?? 5));
 
     this.on('hearbeat', () => {
       const seconds = getTimestamp() - startTime;
-      if ((this.#options.heartbeatTimeout ?? 5) < seconds && this.#ws.readyState > 1) {
+      if ((this.options.heartbeatTimeout ?? 5) < seconds && this.ws.readyState > 1) {
         console.log('heartbeat timeout');
-        this.#connection();
+        this.connection();
       }
     });
   }
-  #connection() {
-    this.#ws = new WebSocket(this.#options.url);
+  connection() {
+    this.ws = new WebSocket(this.options.url);
   }
-  #reconnection() {
+  reconnection() {
     // 1 ：对应常量OPEN(numeric value 1)，
     // 连接成功建⽴，可以进⾏通信。The WebSocket connection is established and communication is possible.
     // 2 ：对应常量CLOSING(numeric value 2)
@@ -84,35 +84,35 @@ class WebSocketEvent {
     // 3 : 对应常量CLOSED(numeric value 3)
     // 连接已经关闭或者根本没有建⽴。The connection has been closed or could not be opened.
     setInterval(() => {
-      if (this.#ws.readyState != 1) {
+      if (this.ws.readyState != 1) {
         console.log('reconnection');
-        this.#connection();
+        this.connection();
       }
-    }, 1000 * (this.#options.reconnectionInterval ?? 5));
+    }, 1000 * (this.options.reconnectionInterval ?? 5));
   }
-  #Listener() {
-    this.#maxListener();
-    this.#reconnection();
-    this.#heartbeat();
-    this.#ws.onclose = ev => {
+  listener() {
+    this.maxListener();
+    this.reconnection();
+    // this.heartbeat();
+    this.ws.onclose = ev => {
       if (this.isExist('close')) {
-        this.#emit.emit('close', ev);
+        this.emits.emit('close', ev);
       }
     };
-    this.#ws.onerror = ev => {
+    this.ws.onerror = ev => {
       if (this.isExist('error')) {
-        this.#emit.emit('error', ev);
+        this.emits.emit('error', ev);
       }
     };
-    this.#ws.onopen = ev => {
+    this.ws.onopen = ev => {
       if (this.isExist('open')) {
-        this.#emit.emit('open', ev);
+        this.emits.emit('open', ev);
       }
     };
-    this.#ws.onmessage = (ev: MessageEvent) => {
+    this.ws.onmessage = (ev: MessageEvent) => {
       const message = JSON.parse(ev.data) as SocketMessage;
       if (this.isExist(message.eventName)) {
-        this.#emit.emit(message.eventName, message.args);
+        this.emits.emit(message.eventName, message.args);
       }
     };
   }
@@ -127,7 +127,7 @@ export default function VueSocket(app: App): void {
     return;
   }
   const webSocketEvent = new WebSocketEvent({
-    url: `${import.meta.env.VITE_PROXY_WS_API}?id=${getTimestamp()}`,
+    url: `${import.meta.env.VITE_PROXY_WS_API}/${getTimestamp()}`,
     heartbeatInterval: 5,
     reconnectionInterval: 5,
   });

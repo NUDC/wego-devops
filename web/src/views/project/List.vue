@@ -38,6 +38,10 @@ const columns = [
 ];
 
 const dataSource = ref<ProjectIndex[]>([]);
+const groups = computed(() => [...new Set(dataSource.value.map(o => o.group))]);
+const group = ref<string>();
+const groupSouce = computed(() => dataSource.value.filter(o => o.group === group.value));
+
 const reload = async () => {
   const { data } = await getProjects();
   dataSource.value = data;
@@ -46,6 +50,7 @@ const reload = async () => {
 const handleRun = async (record: Record<string, any>) => {
   const { code, message: msg } = await run({
     ...getId(record),
+    codes: [],
   });
   if (code == 1) {
     message.success('执行成功');
@@ -91,6 +96,7 @@ function getId(record: Record<string, any>) {
 
 onMounted(async () => {
   await reload();
+  group.value = groups.value.find(() => true);
 });
 </script>
 
@@ -98,7 +104,10 @@ onMounted(async () => {
   <div class="flex gap-3 justify-end py-2">
     <AButton type="dashed" @click="handleAdd">添加项目</AButton>
   </div>
-  <ATable row-key="name" :columns="columns" :data-source="dataSource" :pagination="false">
+  <a-tabs type="card" v-model:activeKey="group">
+    <a-tab-pane v-for="item in groups" :key="item" :tab="item"></a-tab-pane>
+  </a-tabs>
+  <ATable row-key="name" :columns="columns" :data-source="groupSouce" :pagination="false">
     <template #bodyCell="{ column, record }">
       <template v-if="column.dataIndex === 'action'">
         <ASpace>

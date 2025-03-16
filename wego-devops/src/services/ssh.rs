@@ -11,7 +11,7 @@ pub async fn run_shell(shell_command: &str) -> anyhow::Result<()> {
         Command::new(settings::get_shell_env())
             .arg("-c")
             .arg(&shell_command)
-            .status()
+            .status()            
             .await
     })
     .await??;
@@ -29,8 +29,8 @@ pub async fn run_local_shell(
     let shell_command = format!(
         r#"
 cd {}
-PS4='+[$(date "+%Y-%m-%d %H:%M:%S")]'
 bash -xe <<EOF 2>&1 | tee -a {}
+PS4='+[$(date "+%Y-%m-%d %H:%M:%S")]'
 {}
 EOF
 "#,
@@ -48,11 +48,13 @@ pub async fn run_remote_shell(
 ) -> anyhow::Result<()> {
     let content = script_content.replace("$", "\\$").replace(r#"""#, r#"\""#);
     let shell_command = format!(
-        r#"ssh -t {} "
-        set -xe 
-        export PS4='+[$(date "+%Y-%m-%d %H:%M:%S")]'
-        {}
-        " | tee -a {}"#,
+        r#"
+ssh -t {} "
+set -xe 
+export PS4='+[$(date "+%Y-%m-%d %H:%M:%S")]'
+{}
+" | tee -a {}
+        "#,
         host, content, log_file
     );
     run_shell(&shell_command).await?;

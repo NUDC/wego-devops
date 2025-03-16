@@ -5,15 +5,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::Router;
-use tokio::sync::broadcast::channel;
-use tokio::{signal, sync::broadcast::Sender};
+use tokio::signal;
 
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub use result::Result;
 pub use serializer::{datetime_format, datetime_option_format};
+
 mod controllers;
+mod events;
 mod result;
 mod serializer;
 mod services;
@@ -28,7 +29,7 @@ async fn main() {
         .with(EnvFilter::from(settings::log()))
         .init();
 
-    let state = Arc::new(AppState::new());
+    let state = Arc::new(AppState::default());
 
     let app = Router::new()
         .merge(controllers::routes(state.clone()))
@@ -51,6 +52,7 @@ async fn main() {
 
     tracing::info!("listening on http://{}", listener.local_addr().unwrap());
 
+    events::listen().await;
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
@@ -64,15 +66,5 @@ async fn shutdown_signal() {
     tracing::info!("关闭");
 }
 
-#[derive(Clone)]
-pub struct AppState {
-    pub chat: Sender<controllers::Payload>,
-}
-
-impl AppState {
-    fn new() -> AppState {
-        let (chat, _) = channel::<controllers::Payload>(32);
-
-        Self { chat }
-    }
-}
+#[derive(Clone, Default)]
+pub struct AppState {}

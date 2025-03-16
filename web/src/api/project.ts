@@ -1,6 +1,7 @@
 import request from './VueAxios';
 
 export interface ProjectIndex {
+  group: string;
   name: string;
   remark: string;
   status: number;
@@ -17,6 +18,7 @@ export interface ProjectInfo {
   group?: string;
   buildScript: string;
   deploy: {
+    code: string;
     ip: string;
     deployScript: string;
   }[];
@@ -28,7 +30,7 @@ export interface ProjectUniqueId {
 }
 
 export interface ProjectDepolyDto extends ProjectUniqueId {
-  ip?: string;
+  codes: string[];
 }
 export interface ProjectLog {
   path: string;
@@ -60,6 +62,6 @@ export function run(data: ProjectDepolyDto) {
 export function getLogs(data: ProjectUniqueId) {
   return request.postJson<string[]>('/project/getlogs', data);
 }
-export function getLog(path: string) {
-  return request.postJson<string>('/project/getlog', { path });
+export function removeLog(path: string) {
+  return request.postJson<string>('/project/removeLog', { path });
 }

@@ -8,6 +8,7 @@ import {
   deploy,
   run,
   getServers,
+  removeLog,
 } from '@/api';
 import { message } from 'ant-design-vue';
 import { Rule } from 'ant-design-vue/es/form';
@@ -44,6 +45,7 @@ const reloadLogs = async () => {
     logsData.value = [];
     return;
   }
+
   const { data } = await getLogs(id.value);
   logsData.value = data;
 };
@@ -52,6 +54,15 @@ const handleShowLog = (path: string) => {
   logPath.value = path;
   logOpen.value = true;
 };
+const handleRemoveLog = async (path: string) => {
+  const { code } = await removeLog(path);
+  if (code != 1) {
+    message.warning(`删除日志失败`);
+    return;
+  }
+  await reloadLogs();
+  message.success('删除日志成功');
+};
 
 const handleSave = async (values: ProjectInfo) => {
   const { code, message: msg } = await setProjectInfo(values as ProjectInfo);
@@ -59,6 +70,13 @@ const handleSave = async (values: ProjectInfo) => {
     message.warning(`保存失败：${msg}`);
     return;
   }
+  router.push({
+    name: 'projectsave',
+    query: {
+      name: values.name,
+      group: values.group,
+    },
+  });
   message.success('保存成功');
 };
 const handleBulder = async () => {
@@ -69,9 +87,9 @@ const handleBulder = async () => {
   }
   message.warning(msg);
 };
-const hanldleDeploy = async (ip: string) => {
+const hanldleDeploy = async (c: string) => {
   const { code, message: msg } = await deploy({
-    ip: ip,
+    codes: [c],
     ...id.value,
   });
   if (code == 1) {
@@ -81,7 +99,10 @@ const hanldleDeploy = async (ip: string) => {
   message.warning(msg);
 };
 const handleRun = async () => {
-  const { code, message: msg } = await run(id.value);
+  const { code, message: msg } = await run({
+    codes: [],
+    ...id.value,
+  });
   if (code == 1) {
     message.success('执行成功');
     return;
@@ -91,6 +112,7 @@ const handleRun = async () => {
 
 const addDeploy = () => {
   form.deploy.push({
+    code: '',
     ip: '',
     deployScript: '',
   });
@@ -102,6 +124,7 @@ const removeDeploy = (index: number) => {
 
 const serverSelectOptions = ref<{ label: string; value: string }[]>([]);
 
+let timer: NodeJS.Timeout;
 onBeforeMount(async () => {
   const { data: serverList } = await getServers();
   serverSelectOptions.value = serverList.map(o => {
@@ -114,12 +137,19 @@ onBeforeMount(async () => {
   const { data } = await getProjectInfo(id.value);
   Object.assign(form, data);
   await reloadLogs();
+  timer = setInterval(async () => {
+    await reloadLogs();
+  }, 1000 * 3);
+});
+
+onUnmounted(() => {
+  clearInterval(timer);
 });
 </script>
 
 <template>
   <div class="flex justify-between">
-    <div class="flex flex-col gap-3 pr-[50px] w-[200px]">
+    <div class="flex flex-col gap-3 mr-[50px] w-[250px]">
       <AButton type="primary" @click="handleBulder" v-show="isEdit">构建</AButton>
       <APopconfirm
         title="确认执行构建+部署所有脚本?"
@@ -132,11 +162,18 @@ onBeforeMount(async () => {
       </APopconfirm>
       <div>
         <a-divider orientation="center"><span>日志</span></a-divider>
-        <a-list item-layout="horizontal" :data-source="logsData">
-          <template #renderItem="{ item }">
-            <a-button type="text" @click="handleShowLog(item)">{{ getFileName(item) }}</a-button>
+        <div>
+          <template v-for="item in logsData">
+            <div class="flex gap-1.5 justify-between items-center mb-1">
+              <a-button type="text" @click="handleShowLog(item)">
+                {{ getFileName(item) }}
+              </a-button>
+              <a-button type="link" size="small" danger @click="handleRemoveLog(item)">
+                删除
+              </a-button>
+            </div>
           </template>
-        </a-list>
+        </div>
       </div>
     </div>
     <div class="w-full">
@@ -166,7 +203,7 @@ onBeforeMount(async () => {
                     v-show="isEdit"
                     type="primary"
                     size="small"
-                    @click="hanldleDeploy(item.ip)"
+                    @click="hanldleDeploy(item.code)"
                   >
                     部署
                   </a-button>
@@ -182,6 +219,9 @@ onBeforeMount(async () => {
               </template>
 
               <a-form layout="vertical" :model="item">
+                <a-form-item label="唯一编号" :name="['deploy', index, 'code']">
+                  <a-input v-model:value="item.code" style="width: 100%" />
+                </a-form-item>
                 <a-form-item label="服务器" :name="['deploy', index, 'ip']">
                   <a-select
                     v-model:value="item.ip"

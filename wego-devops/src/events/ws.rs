@@ -1,6 +1,6 @@
 //! ws通讯
 use axum::{
-    extract::{ws, State},
+    extract::{ws, Path},
     response::IntoResponse,
     routing::get,
     Router,
@@ -9,27 +9,27 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::AppState;
+use crate::{events, AppState};
 
 pub fn routes(state: Arc<AppState>) -> Router {
-    Router::new().route("/ws", get(handler)).with_state(state)
+    Router::new()
+        .route("/ws/{id}", get(handler))
+        .with_state(state)
 }
 
-async fn handler(
-    State(state): State<Arc<AppState>>,
-    upgrade: ws::WebSocketUpgrade,
-) -> impl IntoResponse {
+async fn handler(Path(id): Path<i64>, upgrade: ws::WebSocketUpgrade) -> impl IntoResponse {
     upgrade
         .on_failed_upgrade(|err| tracing::warn!("websocket conn error:{}", err))
-        .on_upgrade(move |sockect| websocket(state, sockect))
+        .on_upgrade(move |sockect| websocket(id, sockect))
 }
 
-async fn websocket(state: Arc<AppState>, socket: ws::WebSocket) {
+async fn websocket(id: i64, socket: ws::WebSocket) {
     let (mut sender, mut receiver) = socket.split();
 
-    let tx = state.chat.clone();
+    let tx = events::CHAT.clone();
     let mut rx = tx.subscribe();
 
+    tracing::info!("ws id:{}", id);
     // 发送消息
     tokio::spawn(async move {
         while let Ok(payload) = rx.recv().await {
@@ -41,8 +41,12 @@ async fn websocket(state: Arc<AppState>, socket: ws::WebSocket) {
                 }
             };
 
+            if payload.id != id {
+                continue;
+            }
+
             match sender.send(ws::Message::Text(json.clone().into())).await {
-                Ok(_) => tracing::debug!("发送消息成功{:?}", json),
+                Ok(_) => tracing::debug!("发送消息成功:{}", payload.event_name),
                 Err(err) => {
                     tracing::warn!("发送消息失败：{err}");
                     break;
@@ -61,24 +65,32 @@ async fn websocket(state: Arc<AppState>, socket: ws::WebSocket) {
             }
         };
         let payload = match msg {
-            ws::Message::Text(text) => serde_json::from_slice::<Payload>(text.as_bytes())
+            ws::Message::Text(text) => serde_json::from_slice::<ReceivePayload>(text.as_bytes())
                 .unwrap_or_else(|err| {
                     tracing::warn!("解析消息错误：{err}");
-                    Payload::default()
+                    ReceivePayload::default()
                 }),
             ws::Message::Close(_) => break,
             ws::Message::Ping(_) => todo!(),
             ws::Message::Pong(_) => todo!(),
             ws::Message::Binary(_) => todo!(),
         };
-        tracing::info!("解析数据：{:?}", payload);
-        let _ = tx.send(payload);
+
+        _ = events::emit(id, &payload.event_name, &payload.args).await;
     }
 }
 
 #[derive(Deserialize, Serialize, Clone, Default, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Payload {
+    pub id: i64,
     pub event_name: String,
-    pub args: Option<String>,
+    pub args: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ReceivePayload {
+    pub event_name: String,
+    pub args: String,
 }

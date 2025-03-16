@@ -22,7 +22,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/deploy", post(deploy))
         .route("/run", post(run))
         .route("/getlogs", post(get_log_all))
-        .route("/getlog", post(get_log))
+        .route("/removeLog", post(remove_log))
         .with_state(state)
 }
 
@@ -30,8 +30,16 @@ pub fn routes(state: Arc<AppState>) -> Router {
 #[serde(rename_all = "camelCase")]
 struct ProjectDeployDto {
     pub name: String,
-    pub group: Option<String>,
-    pub ip: Option<String>,
+    pub group: String,
+    pub codes: Vec<String>,
+}
+impl ProjectDeployDto {
+    pub fn get_id(&self) -> ProjectUniqueId {
+        ProjectUniqueId {
+            group: self.group.clone(),
+            name: self.name.clone(),
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -52,10 +60,7 @@ async fn del_project(Json(dto): Json<Vec<ProjectUniqueId>>) -> Result<()> {
 }
 /// 获取项目信息
 async fn get_project_info(Json(dto): Json<ProjectUniqueId>) -> Result<ProjectConfig> {
-    let Some(project) = services::group::get_by_id(dto).await? else {
-        return anyhow::anyhow!("not found").into();
-    };
-    let data = project::get_config(&project.name, project.group).await?;
+    let data = project::get_config(&dto).await?;
     Ok(data).into()
 }
 /// 编辑项目信息
@@ -88,38 +93,34 @@ async fn set_project_info(Json(dto): Json<ProjectConfig>) -> Result<()> {
 
 /// 执行构建脚本
 async fn build(Json(dto): Json<ProjectUniqueId>) -> Result<()> {
-    let project = services::project::get_config(&dto.name, dto.group).await?;
+    let project = services::project::get_config(&dto).await?;
     project.build(None)?;
     Ok(()).into()
 }
 /// 执行部署脚本
 async fn deploy(Json(dto): Json<ProjectDeployDto>) -> Result<()> {
-    let project = services::project::get_config(&dto.name, dto.group).await?;
-    project.deploy(dto.ip, None).await?;
+    let project = services::project::get_config(&dto.get_id()).await?;
+    project.deploy(dto.codes, None).await?;
     Ok(()).into()
 }
 /// 执行所有脚本
 async fn run(Json(dto): Json<ProjectDeployDto>) -> Result<()> {
-    let project = services::project::get_config(&dto.name, dto.group).await?;
-    project.run(dto.ip).await?;
+    let project = services::project::get_config(&dto.get_id()).await?;
+    project.run(dto.codes).await?;
     Ok(()).into()
 }
 
 /// 获取日志列表
 async fn get_log_all(Json(dto): Json<ProjectUniqueId>) -> Result<Vec<PathBuf>> {
-    let files = services::project::get_log_files(&dto.name, dto.group).await?;
+    let files = services::project::get_log_files(&dto).await?;
     Ok(files).into()
 }
 
-/// 读取日志
-async fn get_log(Json(dto): Json<ProjectLog>) -> Result<String> {
-    let contents = fs::read(&dto.path)
+/// 删除日志
+async fn remove_log(Json(dto): Json<ProjectLog>) -> Result<()> {
+    fs::remove_file(dto.path)
         .await
-        .with_context(|| format!("Failed to read file: {}", dto.path))?;
+        .with_context(|| "删除日志失败")?;
 
-    // 将字节数据转换为字符串
-    let text = String::from_utf8(contents)
-        .with_context(|| format!("Failed to convert file content to UTF-8: {}", dto.path))?;
-
-    Ok(text).into()
+    Ok(()).into()
 }
