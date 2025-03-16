@@ -5,6 +5,14 @@ where
     F: Fn(PathBuf) -> PathBuf,
 {
     let root_path = PathBuf::new().join(get_value("RootPath"));
+    // 获取绝对路径
+    let root_path = if root_path.starts_with(".") {
+        let current_dir = std::env::current_dir()?;
+        current_dir.join(root_path)
+    } else {
+        root_path
+    };
+
     let dir = func(root_path);
     if dir.exists() == false {
         fs::create_dir_all(dir.clone())?;
